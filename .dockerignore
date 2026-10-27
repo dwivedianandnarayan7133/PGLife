@@ -1,0 +1,11 @@
+.git
+.gitignore
+.dockerignore
+*.pptx
+*.ppt
+generate_presentation.py
+generate_production_sql.py
+react-app/node_modules/
+slide_previews/
+extracted_assets/
+.gemini/

@@ -23,7 +23,14 @@ const PropertyCard = props => {
   return (
     <div className={`property-card property-id-${props.property.id} row`}>
       <div className="image-container col-md-4">
-        <img src={base_path + "/" + props.property.image} alt="property" />
+        <img
+          src={base_path + "/" + props.property.image}
+          onError={e => {
+            e.target.onerror = null;
+            e.target.src = base_path + "/img/properties/1/46ebbb537aa9fb0a.jpg";
+          }}
+          alt="property"
+        />
       </div>
 
       <div className="content-container col-md-8">

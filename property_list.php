@@ -136,8 +136,8 @@ $city_name = $_GET["city"];
         t()
       })([])
     </script>
-    <script src="js/2.bb328bef.chunk.js"></script>
-    <script src="js/main.d86a88e7.chunk.js"></script>
+    <script src="js/2.8372b724.chunk.js"></script>
+    <script src="js/main.4c053c0e.chunk.js"></script>
 </body>
 
 </html>

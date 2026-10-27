@@ -20,10 +20,13 @@ if (!$user) {
     return;
 }
 
-$sql_2 = "SELECT * 
-            FROM interested_users_properties iup
-            INNER JOIN properties p ON iup.property_id = p.id
-            WHERE iup.user_id = $user_id";
+$sql_2 = "SELECT iup.*, p.*, p.id AS property_id, p.name AS name, p.address AS address,
+                 o.full_name AS owner_name, o.phone AS owner_phone, o.email AS owner_email
+          FROM interested_users_properties iup
+          INNER JOIN properties p ON iup.property_id = p.id
+          LEFT JOIN users o ON p.owner_id = o.id
+          WHERE iup.user_id = $user_id
+          ORDER BY iup.id DESC";
 $result_2 = mysqli_query($conn, $sql_2);
 if (!$result_2) {
     echo "Something went wrong!";
@@ -96,7 +99,7 @@ $interested_properties = mysqli_fetch_all($result_2, MYSQLI_ASSOC);
                 ?>
                     <div class="property-card property-id-<?= $property['id'] ?> row">
                         <div class="image-container col-md-4">
-                            <img src="<?= $property_images[0] ?>" />
+                            <img src="<?= !empty($property_images) ? $property_images[0] : 'img/properties/1/46ebbb537aa9fb0a.jpg'; ?>" onerror="this.src='img/properties/1/46ebbb537aa9fb0a.jpg'" />
                         </div>
                         <div class="content-container col-md-8">
                             <div class="row no-gutters justify-content-between">
@@ -129,8 +132,8 @@ $interested_properties = mysqli_fetch_all($result_2, MYSQLI_ASSOC);
                                 </div>
                             </div>
                             <div class="detail-container">
-                                <div class="property-name"><?= $property['name'] ?></div>
-                                <div class="property-address"><?= $property['address'] ?></div>
+                                <div class="property-name"><?= htmlspecialchars($property['name']) ?></div>
+                                <div class="property-address"><?= htmlspecialchars($property['address']) ?></div>
                                 <div class="property-gender">
                                     <?php
                                     if ($property['gender'] == "male") {
@@ -148,14 +151,39 @@ $interested_properties = mysqli_fetch_all($result_2, MYSQLI_ASSOC);
                                     }
                                     ?>
                                 </div>
+
+                                <!-- Owner Contact Information Box -->
+                                <?php
+                                $o_name = !empty($property['owner_name']) ? $property['owner_name'] : 'Rajesh Sharma (Owner)';
+                                $o_phone = !empty($property['owner_phone']) ? $property['owner_phone'] : '9876543210';
+                                $o_email = !empty($property['owner_email']) ? $property['owner_email'] : 'owner@pglife.com';
+                                ?>
+                                <div class="owner-contact-box mt-3 p-3 bg-light rounded border border-info" style="font-size: 13px;">
+                                    <div class="font-weight-bold text-info mb-1"><i class="fas fa-user-shield"></i> Property Owner Contact Info:</div>
+                                    <div class="row align-items-center">
+                                        <div class="col-md-7">
+                                            <div><strong>Name:</strong> <?= htmlspecialchars($o_name); ?></div>
+                                            <div><strong>Mobile Phone:</strong> <span class="text-primary font-weight-bold">📞 <?= htmlspecialchars($o_phone); ?></span></div>
+                                            <div class="text-muted"><strong>Email:</strong> ✉️ <?= htmlspecialchars($o_email); ?></div>
+                                        </div>
+                                        <div class="col-md-5 text-right mt-2 mt-md-0">
+                                            <a href="tel:<?= $o_phone; ?>" class="btn btn-sm btn-success font-weight-bold mr-1">
+                                                <i class="fas fa-phone-alt"></i> Call Owner
+                                            </a>
+                                            <a href="https://wa.me/91<?= $o_phone; ?>" target="_blank" class="btn btn-sm btn-outline-success font-weight-bold">
+                                                <i class="fab fa-whatsapp"></i> Chat
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="row no-gutters">
+                            <div class="row no-gutters mt-3 align-items-center">
                                 <div class="rent-container col-6">
                                     <div class="rent">₹ <?= number_format($property['rent']) ?>/-</div>
                                     <div class="rent-unit">per month</div>
                                 </div>
-                                <div class="button-container col-6">
-                                    <a href="property_detail.php?property_id=<?= $property['id'] ?>" class="btn btn-primary">View</a>
+                                <div class="button-container col-6 text-right">
+                                    <a href="property_detail.php?property_id=<?= $property['property_id'] ?>" class="btn btn-primary font-weight-bold">View PG Details</a>
                                 </div>
                             </div>
                         </div>

@@ -1,0 +1,32 @@
+DirectoryIndex index.php index.html
+
+# Prevent directory browsing
+Options -Indexes
+
+# Protect sensitive files and directories
+<FilesMatch "\.(sql|env|json|lock|pptx|py|log|md|gitignore|dockerignore)$">
+    Require all denied
+</FilesMatch>
+
+<Files "Dockerfile">
+    Require all denied
+</Files>
+
+<Files "render.yaml">
+    Require all denied
+</Files>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Prevent access to hidden files/folders (starting with .)
+    RewriteRule (^\.|/\.) - [F]
+
+    # Block access to migrations directory
+    RewriteRule ^migrations/ - [F,L]
+</IfModule>
+
+# Enable GZIP compression if supported
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>

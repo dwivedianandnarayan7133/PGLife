@@ -1,7 +1,15 @@
-CREATE DATABASE IF NOT EXISTS `pglife`;
-USE `pglife`;
+-- ===================================================================
+-- PGLife Complete Production Database Dump
+-- Compatible with: Railway, Render, TiDB, Aiven, InfinityFree, XAMPP, Docker
+-- ===================================================================
 
--- Table structure for `amenities` --
+SET FOREIGN_KEY_CHECKS = 0;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET time_zone = "+00:00";
+
+-- --------------------------------------------------------
+-- Table structure for `amenities`
+-- --------------------------------------------------------
 DROP TABLE IF EXISTS `amenities`;
 CREATE TABLE `amenities` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -9,9 +17,365 @@ CREATE TABLE `amenities` (
   `type` varchar(100) NOT NULL,
   `icon` varchar(100) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for `amenities` --
+-- --------------------------------------------------------
+-- Table structure for `cities`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `cities`;
+CREATE TABLE `cities` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `users`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `email` varchar(255) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `full_name` varchar(255) NOT NULL,
+  `phone` varchar(20) NOT NULL,
+  `gender` varchar(10) NOT NULL,
+  `college_name` varchar(255) NOT NULL,
+  `role` enum('user','owner','admin') NOT NULL DEFAULT 'user',
+  `profile_image` varchar(255) DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `id_proof_doc` varchar(255) DEFAULT NULL,
+  `id_verified` enum('unverified','pending','verified','rejected','deactivated_archived') NOT NULL DEFAULT 'unverified',
+  `notification_prefs` varchar(255) DEFAULT '{"email":true,"push":true,"sms":false}',
+  `deletion_status` enum('none','pending_approval','approved','rejected') DEFAULT 'none',
+  `deletion_reason` text DEFAULT NULL,
+  `deletion_requested_at` datetime DEFAULT NULL,
+  `deletion_admin_remark` text DEFAULT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `properties`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `properties`;
+CREATE TABLE `properties` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `city_id` int(11) NOT NULL,
+  `owner_id` int(11) DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
+  `address` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  `gender` enum('male','female','unisex') NOT NULL,
+  `rent` int(11) NOT NULL,
+  `rating_clean` float(3,1) NOT NULL DEFAULT 4.0,
+  `rating_food` float(3,1) NOT NULL DEFAULT 4.0,
+  `rating_safety` float(3,1) NOT NULL DEFAULT 4.0,
+  `status` enum('pending','approved','rejected','suspended') NOT NULL DEFAULT 'approved',
+  `is_published` tinyint(1) NOT NULL DEFAULT 1,
+  `is_pet_friendly` tinyint(1) NOT NULL DEFAULT 0,
+  `near_college` varchar(255) DEFAULT NULL,
+  `views_count` int(11) NOT NULL DEFAULT 0,
+  `admin_notes` text DEFAULT NULL,
+  `total_rooms` int(11) NOT NULL DEFAULT 10,
+  `total_beds` int(11) NOT NULL DEFAULT 20,
+  `total_seats` int(11) NOT NULL DEFAULT 20,
+  `reserved_seats` int(11) NOT NULL DEFAULT 2,
+  `occupied_seats` int(11) NOT NULL DEFAULT 12,
+  `available_seats` int(11) NOT NULL DEFAULT 6,
+  `monthly_vacancy` json DEFAULT NULL,
+  `waiting_list_enabled` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `city_id` (`city_id`),
+  KEY `owner_id` (`owner_id`),
+  CONSTRAINT `fk_properties_cities` FOREIGN KEY (`city_id`) REFERENCES `cities` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_properties_owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `properties_amenities`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `properties_amenities`;
+CREATE TABLE `properties_amenities` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `property_id` int(11) NOT NULL,
+  `amenity_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `property_id` (`property_id`),
+  KEY `amenity_id` (`amenity_id`),
+  CONSTRAINT `fk_pa_amenities` FOREIGN KEY (`amenity_id`) REFERENCES `amenities` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pa_properties` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `testimonials`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `testimonials`;
+CREATE TABLE `testimonials` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `property_id` int(11) NOT NULL,
+  `user_name` varchar(255) NOT NULL,
+  `content` text NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `property_id` (`property_id`),
+  CONSTRAINT `fk_testimonials_properties` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `interested_users_properties`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `interested_users_properties`;
+CREATE TABLE `interested_users_properties` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `property_id` int(11) NOT NULL,
+  `move_in_date` date DEFAULT NULL,
+  `room_preference` varchar(50) DEFAULT 'Single',
+  `budget` int(11) DEFAULT 10000,
+  `lead_status` enum('New','Contacted','Seat Reserved','Documents Pending','Booking Confirmed','Booking Cancelled','Not Interested','Closed') NOT NULL DEFAULT 'New',
+  `notes` text DEFAULT NULL,
+  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `property_id` (`property_id`),
+  CONSTRAINT `fk_iup_properties` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_iup_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `property_rooms`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `property_rooms`;
+CREATE TABLE `property_rooms` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `property_id` int(11) NOT NULL,
+  `room_type` enum('Single','Double','Triple','Dormitory') NOT NULL,
+  `rent` int(11) NOT NULL,
+  `capacity` int(11) NOT NULL DEFAULT 1,
+  `available_rooms` int(11) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `property_id` (`property_id`),
+  CONSTRAINT `fk_rooms_properties` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `property_images`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `property_images`;
+CREATE TABLE `property_images` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `property_id` int(11) NOT NULL,
+  `image_url` varchar(255) NOT NULL,
+  `is_cover` tinyint(1) NOT NULL DEFAULT 0,
+  `display_order` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `property_id` (`property_id`),
+  CONSTRAINT `fk_images_properties` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `bookings`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `bookings`;
+CREATE TABLE `bookings` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `property_id` int(11) NOT NULL,
+  `room_type` varchar(50) DEFAULT 'Single',
+  `status` enum('Pending','Contacted','Seat Reserved','Documents Submitted','Agreement Pending','Admin Verification','Approved','Checked In','Active','Checked Out','Cancelled','Rejected') NOT NULL DEFAULT 'Pending',
+  `move_in_date` date DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `agreement_notes` text DEFAULT NULL,
+  `facility_verified` tinyint(1) NOT NULL DEFAULT 0,
+  `payment_status` enum('unpaid','paid','refunded') NOT NULL DEFAULT 'unpaid',
+  `admin_notes` text DEFAULT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `property_id` (`property_id`),
+  CONSTRAINT `fk_bookings_properties` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_bookings_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `agreements`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `agreements`;
+CREATE TABLE `agreements` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `booking_id` int(11) NOT NULL,
+  `owner_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `agreement_doc` varchar(255) NOT NULL,
+  `rules_doc` varchar(255) DEFAULT NULL,
+  `terms_doc` varchar(255) DEFAULT NULL,
+  `status` enum('pending_review','approved','rejected') NOT NULL DEFAULT 'pending_review',
+  `rejection_reason` text DEFAULT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `booking_id` (`booking_id`),
+  KEY `owner_id` (`owner_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `fk_agreements_bookings` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `owner_verifications`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `owner_verifications`;
+CREATE TABLE `owner_verifications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `owner_id` int(11) NOT NULL,
+  `govt_id_doc` varchar(255) DEFAULT NULL,
+  `business_license_doc` varchar(255) DEFAULT NULL,
+  `property_doc` varchar(255) DEFAULT NULL,
+  `bank_account` varchar(255) DEFAULT NULL,
+  `status` enum('pending','verified','rejected') NOT NULL DEFAULT 'pending',
+  `admin_notes` text DEFAULT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `owner_id` (`owner_id`),
+  CONSTRAINT `fk_verifications_users` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `notifications`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `notifications`;
+CREATE TABLE `notifications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `type` varchar(50) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `link` varchar(255) DEFAULT NULL,
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `fk_notifications_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `saved_properties`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `saved_properties`;
+CREATE TABLE `saved_properties` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `property_id` int(11) NOT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_property` (`user_id`, `property_id`),
+  CONSTRAINT `fk_saved_properties` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_saved_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `chat_sessions`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `chat_sessions`;
+CREATE TABLE `chat_sessions` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) DEFAULT NULL,
+  `session_key` varchar(64) NOT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `session_key` (`session_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `chat_messages`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `chat_messages`;
+CREATE TABLE `chat_messages` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `session_id` int(11) NOT NULL,
+  `sender` enum('user','bot') NOT NULL,
+  `message` text NOT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `session_id` (`session_id`),
+  CONSTRAINT `fk_chat_session` FOREIGN KEY (`session_id`) REFERENCES `chat_sessions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `audit_logs`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `audit_logs`;
+CREATE TABLE `audit_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `actor_id` int(11) NOT NULL,
+  `action` varchar(100) NOT NULL,
+  `details` text DEFAULT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `waiting_list`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `waiting_list`;
+CREATE TABLE `waiting_list` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `property_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `full_name` varchar(100) NOT NULL,
+  `phone` varchar(20) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `preferred_move_in` date NOT NULL,
+  `requested_room_type` varchar(50) NOT NULL DEFAULT 'Single',
+  `status` enum('waiting','notified','converted','expired','cancelled') NOT NULL DEFAULT 'waiting',
+  `notified_at` datetime DEFAULT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `property_id` (`property_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `fk_waitlist_properties` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_waitlist_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `support_tickets`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `support_tickets`;
+CREATE TABLE `support_tickets` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `property_id` int(11) DEFAULT NULL,
+  `ticket_type` enum('complaint','inquiry','maintenance','refund','other') NOT NULL DEFAULT 'inquiry',
+  `subject` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `status` enum('Open','In Progress','Resolved','Closed') NOT NULL DEFAULT 'Open',
+  `admin_notes` text DEFAULT NULL,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `fk_tickets_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `admin_otps`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `admin_otps`;
+CREATE TABLE `admin_otps` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `otp_code` varchar(10) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `is_verified` tinyint(1) DEFAULT 0,
+  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `fk_otps_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- DATA DUMP
+-- --------------------------------------------------------
+
 INSERT INTO `amenities` (`id`, `name`, `type`, `icon`) VALUES ('1', 'Wifi', 'Common Area', 'wifi');
 INSERT INTO `amenities` (`id`, `name`, `type`, `icon`) VALUES ('2', 'Air Conditioner', 'Bedroom', 'ac');
 INSERT INTO `amenities` (`id`, `name`, `type`, `icon`) VALUES ('3', 'TV', 'Common Area', 'tv');
@@ -25,61 +389,16 @@ INSERT INTO `amenities` (`id`, `name`, `type`, `icon`) VALUES ('10', 'Parking Sp
 INSERT INTO `amenities` (`id`, `name`, `type`, `icon`) VALUES ('11', 'Power Backup', 'Building', 'powerbackup');
 INSERT INTO `amenities` (`id`, `name`, `type`, `icon`) VALUES ('12', 'RO Water Purifier', 'Common Area', 'rowater');
 INSERT INTO `amenities` (`id`, `name`, `type`, `icon`) VALUES ('13', 'Washing Machine', 'Common Area', 'washingmachine');
-
--- Table structure for `cities` --
-DROP TABLE IF EXISTS `cities`;
-CREATE TABLE `cities` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for `cities` --
 INSERT INTO `cities` (`id`, `name`) VALUES ('1', 'Delhi');
 INSERT INTO `cities` (`id`, `name`) VALUES ('2', 'Mumbai');
 INSERT INTO `cities` (`id`, `name`) VALUES ('3', 'Bengaluru');
 INSERT INTO `cities` (`id`, `name`) VALUES ('4', 'Hyderabad');
-
--- Table structure for `interested_users_properties` --
-DROP TABLE IF EXISTS `interested_users_properties`;
-CREATE TABLE `interested_users_properties` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) NOT NULL,
-  `property_id` int(11) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`),
-  KEY `property_id` (`property_id`),
-  CONSTRAINT `fk_iup_properties` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_iup_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for `interested_users_properties` --
 INSERT INTO `interested_users_properties` (`id`, `user_id`, `property_id`) VALUES ('1', '1', '1');
 INSERT INTO `interested_users_properties` (`id`, `user_id`, `property_id`) VALUES ('2', '1', '2');
 INSERT INTO `interested_users_properties` (`id`, `user_id`, `property_id`) VALUES ('3', '2', '3');
 INSERT INTO `interested_users_properties` (`id`, `user_id`, `property_id`) VALUES ('4', '2', '10');
 INSERT INTO `interested_users_properties` (`id`, `user_id`, `property_id`) VALUES ('7', '5', '1');
 INSERT INTO `interested_users_properties` (`id`, `user_id`, `property_id`) VALUES ('13', '3', '5');
-
--- Table structure for `properties` --
-DROP TABLE IF EXISTS `properties`;
-CREATE TABLE `properties` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `city_id` int(11) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `address` varchar(255) NOT NULL,
-  `description` text NOT NULL,
-  `gender` varchar(10) NOT NULL,
-  `rent` int(11) NOT NULL,
-  `rating_clean` float(2,1) NOT NULL,
-  `rating_food` float(2,1) NOT NULL,
-  `rating_safety` float(2,1) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `city_id` (`city_id`),
-  CONSTRAINT `fk_properties_cities` FOREIGN KEY (`city_id`) REFERENCES `cities` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for `properties` --
 INSERT INTO `properties` (`id`, `city_id`, `name`, `address`, `description`, `gender`, `rent`, `rating_clean`, `rating_food`, `rating_safety`) VALUES ('1', '1', 'Saxena PG', 'H.No. 395, Mukherjee Nagar, Near Batra Cinema, Delhi', 'Furnished PG with high-speed internet, delicious food, daily cleaning service, and security camera monitoring.', 'unisex', '9500', '4.5', '4.2', '4.8');
 INSERT INTO `properties` (`id`, `city_id`, `name`, `address`, `description`, `gender`, `rent`, `rating_clean`, `rating_food`, `rating_safety`) VALUES ('2', '1', 'Navkar Residency', 'Plot No. 12, Hudson Lane, GTB Nagar, Delhi', 'Premium student living with spacious rooms, attached washrooms, biometric entry, and full power backup.', 'male', '11000', '4.8', '4.5', '4.7');
 INSERT INTO `properties` (`id`, `city_id`, `name`, `address`, `description`, `gender`, `rent`, `rating_clean`, `rating_food`, `rating_safety`) VALUES ('3', '1', 'PG for Girls by Sagar', 'House 44, Vijay Nagar, Single/Double Sharing, Delhi', 'Safe and secure girls accommodation near Delhi University North Campus with homemade meals and high-speed Wi-Fi.', 'female', '8500', '4.0', '4.0', '4.9');
@@ -117,21 +436,6 @@ INSERT INTO `properties` (`id`, `city_id`, `name`, `address`, `description`, `ge
 INSERT INTO `properties` (`id`, `city_id`, `name`, `address`, `description`, `gender`, `rent`, `rating_clean`, `rating_food`, `rating_safety`) VALUES ('35', '4', 'Venkateshwara Executive PG', 'Madhapur Main Road, Hyderabad', 'Located near major tech hubs, featuring individual lockers, Wi-Fi, power backup, and daily housekeeping.', 'male', '11500', '4.4', '4.2', '4.6');
 INSERT INTO `properties` (`id`, `city_id`, `name`, `address`, `description`, `gender`, `rent`, `rating_clean`, `rating_food`, `rating_safety`) VALUES ('36', '4', 'Green Leaves Women Stay', 'DLF Road, Gachibowli, Hyderabad', 'Comfortable rooms with attached washrooms, geysers, healthy food, and 24-hour security.', 'female', '12000', '4.6', '4.5', '4.9');
 INSERT INTO `properties` (`id`, `city_id`, `name`, `address`, `description`, `gender`, `rent`, `rating_clean`, `rating_food`, `rating_safety`) VALUES ('37', '4', 'Grand View Residence', 'Begumpet Airport Road, Hyderabad', 'Furnished PG with lift, car parking, power backup, and regular sanitation.', 'unisex', '9500', '4.2', '4.0', '4.5');
-
--- Table structure for `properties_amenities` --
-DROP TABLE IF EXISTS `properties_amenities`;
-CREATE TABLE `properties_amenities` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `property_id` int(11) NOT NULL,
-  `amenity_id` int(11) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `property_id` (`property_id`),
-  KEY `amenity_id` (`amenity_id`),
-  CONSTRAINT `fk_pa_amenities` FOREIGN KEY (`amenity_id`) REFERENCES `amenities` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_pa_properties` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=267 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for `properties_amenities` --
 INSERT INTO `properties_amenities` (`id`, `property_id`, `amenity_id`) VALUES ('1', '1', '1');
 INSERT INTO `properties_amenities` (`id`, `property_id`, `amenity_id`) VALUES ('2', '1', '2');
 INSERT INTO `properties_amenities` (`id`, `property_id`, `amenity_id`) VALUES ('3', '1', '4');
@@ -398,20 +702,6 @@ INSERT INTO `properties_amenities` (`id`, `property_id`, `amenity_id`) VALUES ('
 INSERT INTO `properties_amenities` (`id`, `property_id`, `amenity_id`) VALUES ('264', '37', '9');
 INSERT INTO `properties_amenities` (`id`, `property_id`, `amenity_id`) VALUES ('265', '37', '10');
 INSERT INTO `properties_amenities` (`id`, `property_id`, `amenity_id`) VALUES ('266', '37', '11');
-
--- Table structure for `testimonials` --
-DROP TABLE IF EXISTS `testimonials`;
-CREATE TABLE `testimonials` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `property_id` int(11) NOT NULL,
-  `user_name` varchar(255) NOT NULL,
-  `content` text NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `property_id` (`property_id`),
-  CONSTRAINT `fk_testimonials_properties` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for `testimonials` --
 INSERT INTO `testimonials` (`id`, `property_id`, `user_name`, `content`) VALUES ('1', '1', 'Ashutosh Gowariker', 'You just cannot beat the quality of food here. The staff is polite, helpful and always responsive.');
 INSERT INTO `testimonials` (`id`, `property_id`, `user_name`, `content`) VALUES ('2', '1', 'Karan Johar', 'Awesome place to live in Delhi! Very safe and hygienic environment for students.');
 INSERT INTO `testimonials` (`id`, `property_id`, `user_name`, `content`) VALUES ('3', '2', 'Rohit Sharma', 'Clean rooms and great maintenance. Highly recommended for students near GTB Nagar.');
@@ -419,24 +709,50 @@ INSERT INTO `testimonials` (`id`, `property_id`, `user_name`, `content`) VALUES 
 INSERT INTO `testimonials` (`id`, `property_id`, `user_name`, `content`) VALUES ('5', '19', 'Rahul Dravid', 'Indiranagar location is super convenient. Nice environment and clean amenities.');
 INSERT INTO `testimonials` (`id`, `property_id`, `user_name`, `content`) VALUES ('6', '28', 'VVS Laxman', 'Excellent PG in Hitech city. Very peaceful and well managed.');
 
--- Table structure for `users` --
-DROP TABLE IF EXISTS `users`;
-CREATE TABLE `users` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `email` varchar(255) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `full_name` varchar(255) NOT NULL,
-  `phone` varchar(20) NOT NULL,
-  `gender` varchar(10) NOT NULL,
-  `college_name` varchar(255) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+-- Dumping data for `users` (Including Admin and Demo Owner)
+INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `phone`, `gender`, `college_name`, `role`, `id_verified`) VALUES
+(1, 'john@example.com', '7c4a8d09ca3762af61e59520943dc26494f8941b', 'John Doe', '9876543210', 'male', 'Delhi University', 'user', 'unverified'),
+(2, 'jane@example.com', '7c4a8d09ca3762af61e59520943dc26494f8941b', 'Jane Smith', '9123456789', 'female', 'IIT Bombay', 'user', 'unverified'),
+(3, 'dwivedianandnarayan@gmail.com', '326d13db9e204721eedf38d85204abee57b4a061', 'Anand Narayan Dwivedi', '9120367133', 'male', 'Bansal Institute Of Engineering Technology', 'admin', 'verified'),
+(4, 'testuser993@example.com', 'f2b14f68eb995facb3a1c35287b778d5bd785511', 'Test User', '9998887776', 'male', 'Test College', 'user', 'unverified'),
+(5, 'narayan@gmail.com', '4d02f24c6a1e207b78d9396869de49b6a86ce1b1', 'Anand', '9120367137', 'male', 'Bansal Institute Of Engineering Technology', 'owner', 'verified'),
+(6, 'admin@pglife.com', SHA1('admin123'), 'Platform Super Admin', '9000000001', 'male', 'PG Life Admin HQ', 'admin', 'verified'),
+(7, 'owner@pglife.com', SHA1('owner123'), 'Rajesh Sharma (Owner)', '9876543210', 'male', 'Venkateshwara Stays', 'owner', 'verified'),
+(8, 'student@pglife.com', SHA1('student123'), 'Anand Narayan', '9123456789', 'male', 'Delhi University', 'user', 'verified')
+ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`);
 
--- Dumping data for `users` --
-INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `phone`, `gender`, `college_name`) VALUES ('1', 'john@example.com', '7c4a8d09ca3762af61e59520943dc26494f8941b', 'John Doe', '9876543210', 'male', 'Delhi University');
-INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `phone`, `gender`, `college_name`) VALUES ('2', 'jane@example.com', '7c4a8d09ca3762af61e59520943dc26494f8941b', 'Jane Smith', '9123456789', 'female', 'IIT Bombay');
-INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `phone`, `gender`, `college_name`) VALUES ('3', 'dwivedianandnarayan@gmail.com', '326d13db9e204721eedf38d85204abee57b4a061', 'Anand Narayan Dwivedi', '9120367133', 'male', 'Bansal Institute Of Engineering Technology');
-INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `phone`, `gender`, `college_name`) VALUES ('4', 'testuser993@example.com', 'f2b14f68eb995facb3a1c35287b778d5bd785511', 'Test User', '9998887776', 'male', 'Test College');
-INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `phone`, `gender`, `college_name`) VALUES ('5', 'narayan@gmail.com', '4d02f24c6a1e207b78d9396869de49b6a86ce1b1', 'Anand', '9120367137', 'male', 'Bansal Institute Of Engineering Technology');
 
+-- Update property vacancies and metadata
+UPDATE `properties` 
+SET `monthly_vacancy` = '{"January": 6, "February": 0, "March": 3, "April": 8, "May": 5, "June": 4, "July": 2, "August": 0, "September": 7, "October": 5, "November": 6, "December": 4}',
+    `available_seats` = 6,
+    `total_rooms` = 10,
+    `total_beds` = 20,
+    `total_seats` = 20,
+    `reserved_seats` = 2,
+    `occupied_seats` = 12
+WHERE `available_seats` IS NULL OR `available_seats` = 6;
+
+-- Assign demo properties to owner
+UPDATE `properties` p
+INNER JOIN `users` u ON u.email = 'owner@pglife.com'
+SET p.owner_id = u.id, p.near_college = 'North Campus / Delhi University', p.is_pet_friendly = 1
+WHERE p.id IN (1, 2, 3, 4, 5);
+
+-- Seed rooms for properties
+INSERT INTO `property_rooms` (`property_id`, `room_type`, `rent`, `capacity`, `available_rooms`) VALUES
+(1, 'Single', 11500, 1, 3),
+(1, 'Double', 9500, 2, 5),
+(1, 'Triple', 7500, 3, 2),
+(2, 'Single', 13000, 1, 2),
+(2, 'Double', 11000, 2, 4),
+(3, 'Single', 10000, 1, 1),
+(3, 'Double', 8500, 2, 3)
+ON DUPLICATE KEY UPDATE `rent` = VALUES(`rent`);
+
+-- Seed sample notifications
+INSERT INTO `notifications` (`user_id`, `type`, `title`, `message`, `link`) VALUES
+((SELECT `id` FROM `users` WHERE `email` = 'owner@pglife.com' LIMIT 1), 'interested', 'New Interested Student!', 'Anand Narayan expressed interest in Saxena PG.', 'owner_dashboard.php?tab=interested'),
+((SELECT `id` FROM `users` WHERE `email` = 'student@pglife.com' LIMIT 1), 'booking', 'Welcome to PGLife!', 'Explore top PG accommodations near your college.', 'index.php');
+
+SET FOREIGN_KEY_CHECKS = 1;
